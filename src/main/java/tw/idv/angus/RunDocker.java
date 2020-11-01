@@ -4,22 +4,57 @@ import tw.idv.angus.docker.ContainerConfig;
 import tw.idv.angus.docker.DockerClient;
 import tw.idv.angus.docker.exception.MyDockerClientException;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 
 public class RunDocker {
+    private static final String dependencyPackage = "gson-version";
+    private static final String dependencyPackageVersion = "2.8.0";
+    private static final String repoName = "target_of_update_maven";
+    private static final String workDir = "/opt/git/";
+    private static final String m2 = workDir + ".m2";
+    private static final DockerClient dockerClient = new DockerClient();
+
     public static void main(String[] args) throws MyDockerClientException {
-        DockerClient dockerClient = new DockerClient();
+        runGitClone();
 
-        dockerClient.pullImage("alpine/git", "latest");
+        runMaven(Arrays.asList("mvn", "versions:set-property", "-Dproperty=" + dependencyPackage, "-DnewVersion=" + dependencyPackageVersion));
+        runMaven(Arrays.asList("mvn", "-U", "compile", "test"));
+    }
 
-        ContainerConfig config = new ContainerConfig()
-                .withContainerName("gitclone" + Instant.now().toEpochMilli())
-                .withHostName("gitclone")
-                .withImage("alpine/git:latest")
-                .withVolume("/opt/git/:/opt/git/")
+    private static void runMaven(List<String> mvnCommands) throws MyDockerClientException {
+        checkDir(m2);
+        dockerClient.pullImage("maven", "3.6.3-jdk-8");
+        ContainerConfig config = new ContainerConfig("maven:3.6.3-jdk-8")
+                .withContainerName("maven-versionUpdate" + Instant.now().toEpochMilli())
+                .withHostName("maven")
+                .withVolume(m2 + ":/root/.m2")
+                .withVolume(workDir + ":" + workDir)
+                .withWorkDir(workDir + repoName)
                 .withAutoRemove(true)
-                .withCommand(Arrays.asList("clone", "-b", "develop", "--depth", "1", "https://github.com/ajdfajdfl2003/target_of_update_maven.git", "/opt/git/target_of_update_maven"));
+                .withCommands(mvnCommands);
         dockerClient.run(config);
+    }
+
+    private static void runGitClone() throws MyDockerClientException {
+        dockerClient.pullImage("alpine/git", "latest");
+        ContainerConfig config = new ContainerConfig("alpine/git:latest")
+                .withContainerName("gitclone-" + Instant.now().toEpochMilli())
+                .withHostName("gitclone")
+                .withVolume(workDir + ":" + workDir)
+                .withAutoRemove(true)
+                .withCommands(Arrays.asList("clone", "-b", "develop", "--depth", "1", "https://github.com/ajdfajdfl2003/" + repoName + ".git", workDir + repoName));
+        dockerClient.run(config);
+
+        checkDir(workDir + repoName);
+    }
+
+    private static void checkDir(String location) throws MyDockerClientException {
+        Path path = Paths.get(location);
+        if (!Files.exists(path)) throw new MyDockerClientException(location + " not found");
     }
 }
