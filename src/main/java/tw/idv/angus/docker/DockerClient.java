@@ -1,7 +1,9 @@
 package tw.idv.angus.docker;
 
+import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
+import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.jaxrs.JerseyDockerHttpClient;
@@ -29,20 +31,29 @@ public class DockerClient {
             dockerClient.pullImageCmd(repository)
                     .withTag(tag)
                     .exec(new PullImageResultCallback())
-                    .awaitCompletion(30, TimeUnit.SECONDS);
+                    .awaitCompletion(120, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new MyDockerClientException(e.getMessage(), e);
         }
     }
 
-    public void run(ContainerConfig config) {
-        CreateContainerResponse container
-                = dockerClient
+    public void run(ContainerConfig config) throws MyDockerClientException {
+        CreateContainerCmd containerCmd = dockerClient
                 .createContainerCmd(config.getImageName())
-                .withName(config.getContainerName())
-                .withHostName(config.getHostName())
                 .withHostConfig(config.buildHostConfig())
-                .withCmd(config.getCommands()).exec();
+                .withCmd(config.getCommands());
+        config.getContainerName().ifPresent(containerCmd::withName);
+        config.getHostName().ifPresent(containerCmd::withHostName);
+        config.getWorkDir().ifPresent(containerCmd::withWorkingDir);
+        CreateContainerResponse container = containerCmd.exec();
         dockerClient.startContainerCmd(container.getId()).exec();
+
+        WaitContainerResultCallback waitCallback = new WaitContainerResultCallback();
+        dockerClient.waitContainerCmd(container.getId()).exec(waitCallback);
+        try {
+            waitCallback.awaitCompletion();
+        } catch (InterruptedException e) {
+            throw new MyDockerClientException(e.getMessage(), e);
+        }
     }
 }

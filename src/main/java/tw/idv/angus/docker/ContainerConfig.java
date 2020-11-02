@@ -5,21 +5,25 @@ import com.github.dockerjava.api.model.HostConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ContainerConfig {
-    private List<Bind> binds;
+    private final List<Bind> binds;
+    private final String imageName;
     private boolean autoRemove;
     private String containerName;
     private String hostName;
-    private String imageName;
     private List<String> commands;
+    private String workDir;
 
-    public ContainerConfig() {
-        binds = new ArrayList<>();
+    public ContainerConfig(String imageName) {
+        this.imageName = imageName;
+        this.binds = new ArrayList<>();
+        this.commands = new ArrayList<>();
     }
 
     public ContainerConfig withVolume(String volumeBind) {
-        binds.add(Bind.parse(volumeBind));
+        this.binds.add(Bind.parse(volumeBind));
         return this;
     }
 
@@ -42,29 +46,33 @@ public class ContainerConfig {
         return this;
     }
 
-    public ContainerConfig withImage(String imageName) {
-        this.imageName = imageName;
-        return this;
+    public Optional<String> getContainerName() {
+        return Optional.ofNullable(this.containerName);
     }
 
-    public String getContainerName() {
-        return containerName;
-    }
-
-    public String getHostName() {
-        return hostName;
+    public Optional<String> getHostName() {
+        return Optional.ofNullable(this.hostName);
     }
 
     public String getImageName() {
-        return imageName;
+        return this.imageName;
     }
 
     public List<String> getCommands() {
-        return commands;
+        return this.commands;
     }
 
-    public ContainerConfig withCommand(List<String> commands) {
-        this.commands = commands;
+    public ContainerConfig withCommands(List<String> commands) {
+        this.commands.addAll(commands);
         return this;
+    }
+
+    public ContainerConfig withWorkDir(String workDir) {
+        this.workDir = workDir;
+        return this;
+    }
+
+    public Optional<String> getWorkDir() {
+        return Optional.ofNullable(workDir);
     }
 }
