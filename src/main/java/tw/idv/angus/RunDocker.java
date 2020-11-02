@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
+@Deprecated
 public class RunDocker {
     private static final String dependencyPackage = "gson-version";
     private static final String dependencyPackageVersion = "2.8.1";
