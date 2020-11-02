@@ -2,7 +2,7 @@
 set -e pipefail
 
 DEPENDENCY_PACKAGE="gson-version"
-DEPENDENCY_PACKAGE_VERSION="2.8.0"
+DEPENDENCY_PACKAGE_VERSION="2.7.0"
 
 if [[ ! -x "$(command -v git)" ]]; then
   echo "Please install git."
@@ -36,6 +36,7 @@ docker run --rm \
   -w "${REPO_DIR}" \
   maven:3.6.3-jdk-8 mvn versions:set-property -Dproperty=${DEPENDENCY_PACKAGE} -DnewVersion=${DEPENDENCY_PACKAGE_VERSION}
 
+cd ${REPO_DIR}
 git add .
 git commit -m "update ${DEPENDENCY_PACKAGE} to ${DEPENDENCY_PACKAGE_VERSION}"
 git push origin develop:develop
